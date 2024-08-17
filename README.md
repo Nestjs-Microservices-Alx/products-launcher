@@ -21,7 +21,7 @@ git add .
 git commit -m "Add submodule"
 git push
 ```
-5. Inicializar y actualizar Sub-módulos, cuando alguien clona el repositorio por primera vez, debe de ejecutar el siguiente comando para inicializar y actualizar los sub-módulos
+5. Inicializar y actualizar Sub-módulos, cuando alguien `clona el repositorio por primera vez`, debe de ejecutar el siguiente comando para inicializar y actualizar los sub-módulos
 ```sh
 git submodule update --init --recursive
 ```

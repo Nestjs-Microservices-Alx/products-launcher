@@ -36,6 +36,13 @@ Si se trabaja en el repositorio que tiene los sub-módulos, **primero actualizar
 
 Si se hace al revés, se perderán las referencias de los sub-módulos en el repositorio principal y tendremos que resolver conflictos.
 
+Pasos:
+- --- Haces cambios dentro del repo del micro
+  - -- Haces commit y lo pusheas
+  - -- Al final, actualizas el launcher
+    - Visual con VSCode, se tiene q ver el q tiene el mismo name del submodulo, si el commit al q va a actualizar coincide con el ultimo commit del microservice q se subio, estamos bien y ya solo hacemos commit
+    - Si no aparece el ultimo commit: `git submodule update --remote`
+
 
 
 # Prod

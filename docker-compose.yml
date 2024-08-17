@@ -1,0 +1,133 @@
+services:
+  # microservices ================================
+  client-gateway:
+    build:
+      context: ./client-gateway
+      dockerfile: Dockerfile
+    container_name: client-gateway_container
+    restart: unless-stopped
+    ports:
+      - '${PORT}:3000'
+    volumes:
+      - ./client-gateway/src:/usr/src/app/src
+    command: npm run start:dev
+    env_file:
+      - ./client-gateway/.env
+    depends_on:
+      - products_db
+      - redis
+      - mongodb
+      - nats
+
+  products_ms:
+    build:
+      context: ./products-ms
+      dockerfile: Dockerfile
+    container_name: products_ms_container
+    restart: unless-stopped
+    volumes:
+      - ./products-ms/src:/usr/src/app/src
+    command: npm run start:dev
+    environment:
+      - PORT=3001
+      - NATS_SERVERS=nats://nats:4222
+      - DATABASE_URL=postgres://${DB_USERNAME}:${DB_PASSWORD}@products_db:5432/${DB_NAME}
+    depends_on:
+      - products_db
+      - redis
+      - mongodb
+
+  orders-ms:
+    build:
+      context: ./orders-ms
+      dockerfile: Dockerfile
+    container_name: orders_ms_container
+    restart: unless-stopped
+    volumes:
+      - ./orders-ms/src:/usr/src/app/src
+    command: npm run start:dev
+    environment:
+      - PORT=3002
+      - NATS_SERVERS=nats://nats:4222
+      - DATABASE_URL=postgres://${DB_USERNAME}:${DB_PASSWORD}@orders_db:5432/${DB_NAME}
+    depends_on:
+      - products_db
+      - redis
+      - mongodb
+
+  # infra ==================================
+  products_db:
+    image: postgres:15.4
+    container_name: postgres_container
+    restart: unless-stopped
+    environment:
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_USER: ${DB_USERNAME}
+      POSTGRES_DB: ${DB_NAME}
+    volumes:
+      - products_db:/var/lib/postgresql/data
+    ports:
+      - '${DB_PORT}:5432'
+
+  orders_db:
+    image: postgres:15.4
+    container_name: orders_db_container
+    restart: unless-stopped
+    environment:
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_USER: ${DB_USERNAME}
+      POSTGRES_DB: ${DB_NAME}
+    volumes:
+      - orders_db:/var/lib/postgresql/data
+    ports:
+      - '${DB_PORT_ORDER}:5432'
+
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: pgadmin_container
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@admin.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    ports:
+      - '5050:80'
+
+  redis:
+    image: redis:7.0.13
+    container_name: redis_container
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+    ports:
+      - '6379:6379'
+
+  mongodb:
+    image: mongo:6.0.10
+    container_name: mongodb_container
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: example
+    volumes:
+      - mongodb_data:/data/db
+    ports:
+      - '27017:27017'
+
+  # ### NATS
+  nats:
+    image: nats:2.10.18
+    container_name: nats_container
+    restart: unless-stopped
+    ports:
+      # - '4222:4222'
+      # - '6222:6222'
+      - '8222:8222' # HTTP monitoring port
+
+volumes:
+  products_db:
+  orders_db:
+  pgadmin_data:
+  redis_data:
+  mongodb_data:

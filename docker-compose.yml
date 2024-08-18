@@ -1,5 +1,5 @@
 services:
-  # microservices ================================
+  # microservices ==================================
   client-gateway:
     build:
       context: ./client-gateway
@@ -14,19 +14,18 @@ services:
     env_file:
       - ./client-gateway/.env
     depends_on:
-      - products_db
-      - redis
-      - mongodb
-      - nats
+      - products_ms
+      - orders_ms
+      - payments_ms
 
   products_ms:
     build:
-      context: ./products-ms
+      context: ./products-microservice
       dockerfile: Dockerfile
     container_name: products_ms_container
     restart: unless-stopped
     volumes:
-      - ./products-ms/src:/usr/src/app/src
+      - ./products-microservice/src:/usr/src/app/src
     command: npm run start:dev
     environment:
       - PORT=3001
@@ -37,14 +36,14 @@ services:
       - redis
       - mongodb
 
-  orders-ms:
+  orders_ms:
     build:
-      context: ./orders-ms
+      context: ./orders-microservice
       dockerfile: Dockerfile
     container_name: orders_ms_container
     restart: unless-stopped
     volumes:
-      - ./orders-ms/src:/usr/src/app/src
+      - ./orders-microservice/src:/usr/src/app/src
     command: npm run start:dev
     environment:
       - PORT=3002
@@ -52,6 +51,30 @@ services:
       - DATABASE_URL=postgres://${DB_USERNAME}:${DB_PASSWORD}@orders_db:5432/${DB_NAME}
     depends_on:
       - products_db
+      - redis
+      - mongodb
+
+  payments_ms:
+    build:
+      context: ./payments-ms
+      dockerfile: Dockerfile
+    container_name: payments_ms_container
+    restart: unless-stopped
+    volumes:
+      - ./payments-ms/src:/usr/src/app/src
+    ports:
+      - ${PAYMENT_MS_PORT}:${PAYMENT_MS_PORT}
+    command: npm run start:dev
+    environment:
+      - PORT=${PAYMENT_MS_PORT}
+      - NATS_SERVERS=nats://nats:4222
+      - DATABASE_URL=postgres://${DB_USERNAME}:${DB_PASSWORD}@payments_db:5432/${DB_NAME}
+      - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY_PAYMENT_MS}
+      - STRIPE_ENDPOINT_SECRET=${STRIPE_ENDPOINT_SECRET_PAYMENT_MS}
+      - STRIPE_SUCCESS_URL=${STRIPE_SUCCESS_URL_PAYMENT_MS}
+      - STRIPE_CANCEL_URL=${STRIPE_CANCEL_URL_PAYMENT_MS}
+    depends_on:
+      - payments_db
       - redis
       - mongodb
 
@@ -81,6 +104,19 @@ services:
       - orders_db:/var/lib/postgresql/data
     ports:
       - '${DB_PORT_ORDER}:5432'
+
+  payments_db:
+    image: postgres:15.4
+    container_name: payments_db_container
+    restart: unless-stopped
+    environment:
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_USER: ${DB_USERNAME}
+      POSTGRES_DB: ${DB_NAME}
+    volumes:
+      - payments_db:/var/lib/postgresql/data
+    ports:
+      - '${DB_PORT_PAYMENT}:5432'
 
   pgadmin:
     image: dpage/pgadmin4
@@ -115,7 +151,7 @@ services:
     ports:
       - '27017:27017'
 
-  # ### NATS
+  # ### NATS ==================================
   nats:
     image: nats:2.10.18
     container_name: nats_container
@@ -128,6 +164,7 @@ services:
 volumes:
   products_db:
   orders_db:
+  payments_db:
   pgadmin_data:
   redis_data:
   mongodb_data:

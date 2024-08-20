@@ -17,10 +17,11 @@ services:
       - products_ms
       - orders_ms
       - payments_ms
+      - auth_ms
 
   products_ms:
     build:
-      context: ./products-microservice
+      context: ./products-ms
       dockerfile: Dockerfile
     container_name: products_ms_container
     restart: unless-stopped
@@ -50,7 +51,7 @@ services:
       - NATS_SERVERS=nats://nats:4222
       - DATABASE_URL=postgres://${DB_USERNAME}:${DB_PASSWORD}@orders_db:5432/${DB_NAME}
     depends_on:
-      - products_db
+      - orders_db
       - redis
       - mongodb
 
@@ -75,6 +76,24 @@ services:
       - STRIPE_CANCEL_URL=${STRIPE_CANCEL_URL_PAYMENT_MS}
     depends_on:
       - payments_db
+      - redis
+      - mongodb
+
+  auth_ms:
+    build:
+      context: ./auth-ms
+      dockerfile: Dockerfile
+    container_name: auth_ms_container
+    restart: unless-stopped
+    volumes:
+      - ./auth-ms/src:/usr/src/app/src
+    command: npm run start:dev
+    environment:
+      - PORT=${AUTH_MS_PORT}
+      - NATS_SERVERS=nats://nats:4222
+      - DATABASE_URL=postgres://${DB_USERNAME}:${DB_PASSWORD}@auth_db:5432/${DB_NAME}
+    depends_on:
+      - auth_db
       - redis
       - mongodb
 
@@ -117,6 +136,18 @@ services:
       - payments_db:/var/lib/postgresql/data
     ports:
       - '${DB_PORT_PAYMENT}:5432'
+
+  auth_db:
+    image: mongo:6.0.10
+    container_name: mongodb_container
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: adrian
+      MONGO_INITDB_ROOT_PASSWORD: somePassword123
+    volumes:
+      - mongodb_data:/data/db
+    ports:
+      - '27017:27017'
 
   pgadmin:
     image: dpage/pgadmin4
@@ -165,6 +196,7 @@ volumes:
   products_db:
   orders_db:
   payments_db:
+  auth_db:
   pgadmin_data:
   redis_data:
   mongodb_data:
